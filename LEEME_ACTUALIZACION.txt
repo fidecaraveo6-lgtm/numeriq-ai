@@ -1,0 +1,34 @@
+NUMERIQ AI 1.7 — ACTUALIZACIÓN OFICIAL DE TRIS
+
+SE CONSERVA
+- Los seis módulos de juego y sus modos existentes.
+- Las claves de almacenamiento local numeriq_ai_data_v1 y numeriq_ai_combos_v1.
+- El historial importado, las combinaciones guardadas y el Centro de Aciertos.
+- La importación manual CSV individual y combinada de la versión 1.6.
+
+NUEVO
+- Botón «Actualizar resultados TRIS» en Resultados anteriores.
+- Consulta la página oficial https://www.loterianacional.gob.mx/Tris/Resultados mediante una Netlify Function para evitar depender del permiso CORS del navegador.
+- Incorpora los últimos resultados publicados para las cinco modalidades: Mediodía, De las 3, Extra, De las 7 y Clásico.
+- Deduplica por número de sorteo y conserva la fecha y el identificador oficial del sorteo.
+- Actualiza las estadísticas y el Centro de Aciertos con los resultados nuevos.
+- Si la fuente no responde o cambia su estructura, muestra un error y no borra ni modifica el historial existente.
+
+IMPORTANTE PARA PUBLICAR
+Esta versión necesita Netlify Functions. Publica la carpeta completa del proyecto, incluida la carpeta netlify/functions/tris-results.js. No publiques únicamente los archivos sueltos de la raíz: Netlify debe detectar la función.
+
+PRUEBAS Y LIMITACIONES
+- La lógica de deduplicación y la sintaxis JavaScript se validan localmente.
+- El entorno de desarrollo no tiene acceso de red al dominio oficial, por lo que no fue posible ejecutar aquí una consulta real contra Lotería Nacional. Después de publicar en Netlify, pulsa «Actualizar resultados TRIS» para validar la conexión real.
+- La página oficial publica los últimos 15 sorteos; la sincronización toma los resultados disponibles en esa página. Conserva los CSV históricos ya importados.
+- Si Netlify no despliega la función, la app mostrará un mensaje de error y mantendrá intactos tus datos.
+
+PUBLICACIÓN
+1. Descomprime el ZIP.
+2. Sube el contenido completo de la carpeta a Netlify, incluyendo la carpeta netlify.
+3. Espera a que el despliegue termine.
+4. Abre la app y confirma que aparezca VERSIÓN 1.7.
+5. En Resultados anteriores, pulsa «Actualizar resultados TRIS».
+6. No borres los datos de la PWA ni desinstales la aplicación para actualizar.
+
+La estadística analiza resultados pasados; no predice ni garantiza premios futuros.
