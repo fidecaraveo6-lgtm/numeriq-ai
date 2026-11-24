@@ -1,0 +1,9 @@
+NUMERIQ AI 1.8.1
+
+Corrección del problema donde un resultado TRIS podía aparecer asignado a dos modalidades (por ejemplo, Mediodía y De las 7).
+
+La página oficial puede incluir etiquetas o textos adicionales en las filas. Ahora la función usa el número oficial del sorteo para calcular la modalidad, siguiendo la secuencia de cinco sorteos configurada en NUMERIQ AI.
+
+La sincronización también reconcilia resultados ya guardados cuando tienen drawNo/sourceId y los coloca en su modalidad correspondiente. Se mantienen los demás juegos y combinaciones.
+
+Despliegue: sustituye los archivos existentes por los de este paquete en la raíz del sitio de Netlify/GitHub. Conserva la carpeta netlify/functions. No subas la carpeta contenedora del ZIP; sube su contenido.

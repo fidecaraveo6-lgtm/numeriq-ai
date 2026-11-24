@@ -1,0 +1,30 @@
+NUMERIQ AI 1.8 — CORRECCIONES ACORDADAS
+
+SE CONSERVA
+- Los seis módulos de juego y todos sus modos existentes.
+- Las claves de almacenamiento numeriq_ai_data_v1 y numeriq_ai_combos_v1.
+- El historial, las combinaciones guardadas, la actualización oficial TRIS y la estructura Netlify Function de la v1.7.
+
+CORRECCIONES
+1. Importación CSV mixta: reconoce filas con juego/sorteo/resultado y columnas separadas por modalidad TRIS (por ejemplo TRIS Mediodía, TRIS Extra y TRIS Clásico). Admite delimitadores coma, punto y coma y tabulador mediante el parser existente.
+2. Clasificación TRIS: reconoce Mediodía también por horario 12:00, y conserva separados Mediodía, De las 3, De las 7, Clásico y Extra.
+3. Duplicados: omite resultados ya importados cuando coinciden juego, sorteo, fecha y resultado; no borra el historial.
+4. Centro de Aciertos: TRIS compara las últimas 2, 3, 4 o 5 cifras según el modo elegido. Solo una coincidencia exacta de la longitud jugada se etiqueta como coincidencia exacta; los aciertos parciales se muestran solo como posiciones coincidentes y nunca como premio.
+5. Seguimiento temporal: no compara una combinación con resultados de fechas anteriores o del mismo día en que fue generada, evitando atribuirle resultados que no pudieron ser posteriores.
+6. Últimos resultados: ordena por fecha y, cuando existe, por número de sorteo.
+7. Caché PWA: cambia el identificador a numeriq-ai-v1-8 para forzar la descarga de los archivos actualizados.
+
+ESTADÍSTICAS
+- Los números/dígitos calientes y fríos siguen calculándose con el historial guardado del juego y, para TRIS, del sorteo seleccionado por separado. Son frecuencias históricas, no predicciones ni garantía de premios.
+
+VALIDACIÓN LOCAL
+- Sintaxis JavaScript validada con Node.js.
+- Importación probada con CSV vertical mixto (TRIS y Chispazo) y CSV ancho con varias columnas TRIS.
+- Probada la detección de los cinco sorteos y la distinción entre coincidencia exacta y parcial para TRIS.
+- La consulta en vivo de Lotería Nacional requiere desplegar la carpeta completa en Netlify; no se puede garantizar desde la prueba local.
+
+PUBLICACIÓN
+1. Descomprime el ZIP.
+2. Publica el contenido completo de la carpeta v18 en Netlify, incluida netlify/functions/tris-results.js.
+3. Espera a que termine el despliegue y abre la app. Debe mostrar VERSIÓN 1.8.
+4. No borres los datos locales ni desinstales la PWA. Las claves de almacenamiento se conservaron para mantener tu historial y combinaciones.
