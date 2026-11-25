@@ -19,12 +19,12 @@
   <p>Explora historiales, analiza frecuencias y crea combinaciones para tus sorteos favoritos.</p>
   <div class="hero-stats"><div><b id="drawCount">0</b><small>REGISTROS IMPORTADOS</small></div><div><b>6</b><small>MÓDULOS DE SORTEO</small></div><div><b>24/7</b><small>ANÁLISIS LOCAL</small></div></div>
 </section>
-<section class="section-head"><div><div class="eyebrow">PLATAFORMA</div><h2>Tus sorteos</h2></div><span class="tag">VERSIÓN 1.8</span></section>
+<section class="section-head"><div><div class="eyebrow">PLATAFORMA</div><h2>Tus sorteos</h2></div><span class="tag">VERSIÓN 1.9.1 · ANÁLISIS ESTADÍSTICO</span></section>
 <section class="games-grid" id="games"></section>
 <section class="panel">
  <div class="panel-head"><div><div class="eyebrow">HERRAMIENTAS</div><h2>Centro de datos</h2></div><span class="panel-icon">⌁</span></div>
  <p class="muted">Importa un CSV combinado para detectar varios juegos automáticamente o selecciona un juego para importar su archivo individual. TRIS conserva sus cinco sorteos por separado.</p>
- <div class="import-options"><label class="field-label" for="importGame">Tipo de archivo</label><select id="importGame"><option value="auto">Detectar automáticamente (CSV combinado)</option><option value="tris">TRIS</option><option value="melate">Melate</option><option value="revancha">Revancha</option><option value="revanchita">Revanchita</option><option value="chispazo">Chispazo</option><option value="zodiaco">Zodiaco</option></select><div id="importDrawWrap" hidden><label class="field-label" for="importDraw">Sorteo TRIS del archivo</label><select id="importDraw"><option>Mediodía</option><option>De las 3</option><option>De las 7</option><option>Clásico</option><option>Extra</option></select></div></div>
+ <div class="import-options"><label class="field-label" for="importGame">Tipo de archivo</label><select id="importGame"><option value="auto">Detectar automáticamente (CSV combinado)</option><option value="tris">TRIS</option><option value="melate">Melate</option><option value="revancha">Revancha</option><option value="revanchita">Revanchita</option><option value="chispazo">Chispazo</option><option value="zodiaco">Zodiaco</option></select><div id="importDrawWrap" hidden><label class="field-label" id="importDrawLabel" for="importDraw">Sorteo TRIS del archivo</label><select id="importDraw"><option>Mediodía</option><option>De las 3</option><option>De las 7</option><option>Clásico</option><option>Extra</option></select></div></div>
  <label class="upload-zone" for="csvFile"><span class="upload-icon">↑</span><b>Importar resultados CSV</b><small>Selecciona un archivo .csv de tu dispositivo</small><input id="csvFile" type="file" accept=".csv,text/csv"></label>
  <div id="importStatus" class="status" aria-live="polite">Todavía no has importado archivos.</div>
 </section>
@@ -54,6 +54,7 @@
   <div class="modal-tabs"><button class="tab active" data-tab="generator">Generador</button><button class="tab" data-tab="stats">Estadísticas</button></div>
   <div id="generatorPane">
    <div id="trisDrawWrap" hidden><label class="field-label" for="trisDraw">Sorteo TRIS</label><select id="trisDraw"></select></div>
+   <div id="chispazoDrawWrap" hidden><label class="field-label" for="chispazoDraw">Sorteo Chispazo</label><select id="chispazoDraw"></select></div>
    <label class="field-label" for="amount">Cantidad de combinaciones</label>
    <select id="amount"><option>10</option><option>20</option><option>30</option><option>50</option><option>100</option></select>
    <label class="field-label" for="mode">Modalidad</label><select id="mode"></select>
