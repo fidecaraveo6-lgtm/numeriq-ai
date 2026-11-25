@@ -151,7 +151,22 @@ async function syncOfficialTris(){
   btn.disabled=false;btn.textContent='↻ Actualizar resultados TRIS';
  }
 }
-function renderLatestResults(){const targets=[];games.forEach(g=>{if(g.id==='tris')trisDraws.forEach(draw=>targets.push({id:g.id,draw,label:`TRIS · ${draw}`}));else if(g.id==='chispazo')chispazoDraws.forEach(draw=>targets.push({id:g.id,draw,label:`CHISPAZO · ${draw}`}));else targets.push({id:g.id,draw:'',label:g.name})});$('#latestResults').innerHTML=targets.map(t=>{const entries=allEntriesFor(t.id,t.draw).slice().sort((a,b)=>dateRank(a.date)-dateRank(b.date)||(Number(a.drawNo)||0)-(Number(b.drawNo)||0));const last=entries.at(-1);return `<article class="latest-card"><h3>${escapeHtml(t.label)}</h3><div class="latest-value">${last?escapeHtml(last.value):'—'}</div><div class="latest-meta">${last?`Último resultado disponible · ${escapeHtml(last.date||'fecha no disponible')}`:'Sin resultados guardados'}</div></article>`}).join('')}
+function renderLatestResults(){
+ const targets=[];
+ games.forEach(g=>{
+  if(g.id==='tris')trisDraws.forEach(draw=>targets.push({id:g.id,draw,label:`TRIS · ${draw}`}));
+  else if(g.id==='chispazo'){
+   chispazoDraws.forEach(draw=>targets.push({id:g.id,draw,label:`CHISPAZO · ${draw}`}));
+   targets.push({id:g.id,draw:'__legacy__',label:'CHISPAZO · Historial anterior (sin sorteo identificado)'});
+  }
+  else targets.push({id:g.id,draw:'',label:g.name});
+ });
+ $('#latestResults').innerHTML=targets.map(t=>{
+  const entries=allEntriesFor(t.id,t.draw).slice().sort((a,b)=>dateRank(a.date)-dateRank(b.date)||(Number(a.drawNo)||0)-(Number(b.drawNo)||0));
+  const last=entries.at(-1);
+  return `<article class="latest-card"><h3>${escapeHtml(t.label)}</h3><div class="latest-value">${last?escapeHtml(last.value):'—'}</div><div class="latest-meta">${last?`${entries.length} resultados · Último: ${escapeHtml(last.date||'fecha no disponible')}`:'Sin resultados guardados'}</div></article>`;
+ }).join('');
+}
 function renderHistory(){const total=records.reduce((a,r)=>a+(r.values?.length||Number(r.count)||0),0);$('#drawCount').textContent=total;$('#history').innerHTML=records.length?records.slice(-12).reverse().map(r=>`<div class="history-row"><b>${escapeHtml(r.gameLabel||r.name||'Sorteo')}</b> · ${r.values?.length||r.count||0} resultados <small>${escapeHtml(r.date||'')} · ${escapeHtml(r.file||'CSV')}</small></div>`).join(''):'Tus resultados importados aparecerán aquí.'}
 function renderCombos(){const box=$('#trackedCombos');if(!box)return;if(!tracked.length){box.innerHTML='<p class="muted">Las combinaciones que generes aparecerán aquí para darles seguimiento.</p>';return}box.innerHTML=tracked.slice(-30).reverse().map(c=>{const hit=c.hit||null;return `<article class="track-row"><div><b>${escapeHtml(c.gameLabel)}${c.draw?` · ${escapeHtml(c.draw)}`:''}</b><div class="track-value">${escapeHtml(c.value)}</div><small>${new Date(c.createdAt).toLocaleString('es-MX')}</small></div><div class="track-status">${hit?`<b>${hit.exact?'Coincidencia exacta':'Sin premio exacto'}</b><small>${hit.matches} posiciones coincidentes · ${escapeHtml(hit.date||'')}</small>`:'<small>En seguimiento</small>'}</div></article>`}).join('')}
 function renderAll(){renderHistory();renderLatestResults();renderCombos();if(active)updateStatsPanel()}
