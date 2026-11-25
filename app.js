@@ -542,6 +542,7 @@ function scheduledDrawMinute(gameId,draw){
   if(n.includes('clasico'))return 21*60;
  }
  if(gameId==='zodiaco')return 21*60;
+ return null;
 }
 function resultIsAfterCombo(combo,entry){
  const created=new Date(combo.createdAt);
