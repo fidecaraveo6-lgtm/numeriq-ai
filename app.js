@@ -74,7 +74,13 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
  for(const [k,items] of grouped){const [gameId,draw,mode]=k.split('|'),g=games.find(x=>x.id===gameId);const entries=items.map(x=>({value:x.value,date:x.date,importedAt:new Date().toISOString()}));records.push({gameId,draw,mode,values:entries.map(x=>x.value),entries,name:g?.name||gameId,gameLabel:gameId==='tris'?`TRIS · ${draw}`:g?.name||gameId,count:entries.length,file:fileName,date:items.map(x=>x.date).filter(Boolean).sort((a,b)=>dateRank(a)-dateRank(b)).at(-1)||new Date().toLocaleDateString('es-MX')})}
  updateTrackedHits();persist();$('#importStatus').textContent=`Listo: ${unique.length} resultados nuevos reconocidos (${found.length-unique.length} duplicados omitidos), organizados en ${grouped.size} grupos.`;
 }
-function allEntriesFor(gameId,draw=''){return records.filter(r=>r.gameId===gameId&&(!['tris','chispazo'].includes(gameId)||r.draw===draw)).flatMap(r=>Array.isArray(r.entries)?r.entries:(r.values||[]).map(value=>({value,date:r.date||''}))).filter(e=>e&&e.value!==undefined)}
+function allEntriesFor(gameId,draw=''){
+ const matching=records.filter(r=>r.gameId===gameId&&(
+  !['tris','chispazo'].includes(gameId)||
+  (draw==='__legacy__'?!r.draw:r.draw===draw)
+ ));
+ return matching.flatMap(r=>Array.isArray(r.entries)?r.entries:(r.values||[]).map(value=>({value,date:r.date||''}))).filter(e=>e&&e.value!==undefined);
+}
 async function syncOfficialTris(){
  const btn=$('#syncTrisBtn'),status=$('#syncStatus');
  if(!btn||btn.disabled)return;
