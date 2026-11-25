@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101a2b"><meta name="description" content="NUMERIQ AI - análisis estadístico de sorteos">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg">
+<title>NUMERIQ AI</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">N<span>✦</span></div><div><strong>NUMERIQ <em>AI</em></strong><small>ADVANCED LOTTERY INTELLIGENCE</small></div></div>
+  <button class="icon-btn" id="installBtn" title="Instalar aplicación" hidden>↓</button>
+</header>
+<main>
+<section class="hero">
+  <div class="eyebrow"><span class="pulse"></span> CENTRO DE ANÁLISIS</div>
+  <h1>La inteligencia<br> detrás de <span>los números.</span></h1>
+  <p>Explora historiales, analiza frecuencias y crea combinaciones para tus sorteos favoritos.</p>
+  <div class="hero-stats"><div><b id="drawCount">0</b><small>REGISTROS IMPORTADOS</small></div><div><b>6</b><small>MÓDULOS DE SORTEO</small></div><div><b>24/7</b><small>ANÁLISIS LOCAL</small></div></div>
+</section>
+<section class="section-head"><div><div class="eyebrow">PLATAFORMA</div><h2>Tus sorteos</h2></div><span class="tag">VERSIÓN 2.0 · ANÁLISIS ESTADÍSTICO</span></section>
+<section class="games-grid" id="games"></section>
+<section class="panel">
+ <div class="panel-head"><div><div class="eyebrow">HERRAMIENTAS</div><h2>Centro de datos</h2></div><span class="panel-icon">⌁</span></div>
+ <p class="muted">Importa un CSV combinado para detectar varios juegos automáticamente o selecciona un juego para importar su archivo individual. TRIS conserva sus cinco sorteos por separado.</p>
+ <div class="import-options"><label class="field-label" for="importGame">Tipo de archivo</label><select id="importGame"><option value="auto">Detectar automáticamente (CSV combinado)</option><option value="tris">TRIS</option><option value="melate">Melate</option><option value="revancha">Revancha</option><option value="revanchita">Revanchita</option><option value="chispazo">Chispazo</option><option value="zodiaco">Zodiaco</option></select><div id="importDrawWrap" hidden><label class="field-label" id="importDrawLabel" for="importDraw">Sorteo TRIS del archivo</label><select id="importDraw"><option>Mediodía</option><option>De las 3</option><option>De las 7</option><option>Clásico</option><option>Extra</option></select></div></div>
+ <label class="upload-zone" for="csvFile"><span class="upload-icon">↑</span><b>Importar resultados CSV</b><small>Selecciona un archivo .csv de tu dispositivo</small><input id="csvFile" type="file" accept=".csv,text/csv"></label>
+ <div id="importStatus" class="status" aria-live="polite">Todavía no has importado archivos.</div>
+</section>
+<section class="panel">
+ <div class="panel-head"><div><div class="eyebrow">RESULTADOS</div><h2>Resultados anteriores</h2></div><span class="panel-icon">◷</span></div>
+ <p class="muted">Consulta el último resultado guardado de cada juego y de cada modalidad TRIS. Actualiza TRIS directamente desde la fuente oficial.</p>
+ <button class="primary-btn" id="syncTrisBtn" type="button">↻ Actualizar resultados TRIS</button>
+ <div id="syncStatus" class="status" aria-live="polite">La actualización automática consulta Lotería Nacional cuando el sitio está disponible.</div>
+ <div id="latestResults" class="latest-grid">Todavía no hay resultados importados.</div>
+</section>
+<section class="panel">
+ <div class="panel-head"><div><div class="eyebrow">ACTIVIDAD</div><h2>Tu historial</h2></div><button class="text-btn" id="clearBtn">Borrar datos</button></div>
+ <div id="history" class="history-empty">Tus resultados importados aparecerán aquí.</div>
+</section>
+<section class="panel">
+ <div class="panel-head"><div><div class="eyebrow">SEGUIMIENTO</div><h2>Centro de Aciertos</h2></div><span class="panel-icon">◎</span></div>
+ <p class="muted">Las combinaciones que generes se guardan en este dispositivo y se comparan con resultados posteriores del mismo juego y sorteo. Las coincidencias parciales son estadísticas, no premios.</p>
+ <div id="trackedCombos" class="tracked-list"><p class="muted">Tus combinaciones generadas aparecerán aquí.</p></div>
+</section>
+</main>
+<footer>NUMERIQ AI <span>•</span> Las estadísticas describen resultados pasados; no predicen ni garantizan premios futuros.</footer>
+</div>
+<div class="modal-backdrop" id="modal" hidden>
+ <section class="modal">
+  <button class="close" id="closeModal">×</button>
+  <div class="eyebrow" id="modalKicker">MÓDULO</div><h2 id="modalTitle">TRIS</h2><p id="modalDesc" class="muted"></p>
+  <div class="modal-tabs"><button class="tab active" data-tab="generator">Generador</button><button class="tab" data-tab="stats">Estadísticas</button></div>
+  <div id="generatorPane">
+   <div id="trisDrawWrap" hidden><label class="field-label" for="trisDraw">Sorteo TRIS</label><select id="trisDraw"></select></div>
+   <div id="chispazoDrawWrap" hidden><label class="field-label" for="chispazoDraw">Sorteo Chispazo</label><select id="chispazoDraw"></select></div>
+   <label class="field-label" for="amount">Cantidad de combinaciones</label>
+   <select id="amount"><option>10</option><option>20</option><option>30</option><option>50</option><option>100</option></select>
+   <label class="field-label" for="mode">Modalidad</label><select id="mode"></select>
+   <button class="primary-btn" id="generateBtn">✦ Generar combinaciones</button>
+   <div id="generated" class="generated"></div>
+  </div>
+  <div id="statsPane" hidden><div id="statsContent" class="stats-content"></div></div>
+ </section>
+</div>
+<script src="app.js?v=2.0"></script>
+</body></html>
