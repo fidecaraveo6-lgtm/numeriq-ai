@@ -1,4 +1,4 @@
-// NUMERIQ AI 2.1 — optimización de renderizado, auditoría y generación; conserva el formato de datos.
+// NUMERIQ AI 2.2 — guardado protegido de importaciones y combinaciones; conserva el formato de datos.
 // NUMERIQ AI 2.0 — nombres de juegos y sorteos separados en el historial.
 const trisDraws=['Mediodía','De las 3','De las 7','Clásico','Extra'];
 const chispazoDraws=['De las 3 de la tarde','De las 9 de la noche'];
@@ -18,7 +18,7 @@ let active=null,deferredPrompt=null;const $=s=>document.querySelector(s);
 function persist(){
  const previousRecords=localStorage.getItem(key),previousCombos=localStorage.getItem(comboKey);
  try{
-  localStorage.setItem(key,JSON.stringify(records));
+ localStorage.setItem(key,JSON.stringify(records));
   localStorage.setItem(comboKey,JSON.stringify(tracked));
   renderAll();return true;
  }catch(err){
@@ -53,7 +53,7 @@ function exportBackup(){
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download=`NUMERIQ_AI_respaldo_${new Date().toISOString().slice(0,10)}.json`;
- document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  const status=$('#importStatus');if(status)status.textContent='Copia de seguridad descargada. Guárdala fuera del teléfono para proteger tus datos.';
 }
 async function restoreBackup(file){
@@ -98,7 +98,7 @@ function zodiacDigitWeights(){
 }
 function zodiacSignWeights(){
  const counts=Array(12).fill(1);
- allEntriesFor('zodiaco').map(e=>zodiacResultParts(e.value)).filter(Boolean).forEach(e=>{
+allEntriesFor('zodiaco').map(e=>zodiacResultParts(e.value)).filter(Boolean).forEach(e=>{
   const i=zodiac.indexOf(e.sign);if(i>=0)counts[i]++;
  });
  return counts;
@@ -123,7 +123,6 @@ function saveZodiacResult(){
  if(status)status.textContent=`Resultado guardado: ${value} · ${date}`;
  $('#zodiacResultNumber').value='';
 }
-
 function dateRank(s){if(!s)return 0;const v=String(s).trim();let m=v.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);if(m)return Date.UTC(+m[1],+m[2]-1,+m[3]);m=v.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);if(m)return Date.UTC(+m[3],+m[2]-1,+m[1]);const t=Date.parse(v);return Number.isFinite(t)?t:0}
 function dateFromRow(row,headers){const i=headers.findIndex(h=>/(^|\b)(fecha|date|dia del sorteo)(\b|$)/.test(h));return i>=0?String(row[i]||'').trim():''}
 function detectDraw(s){s=norm(s).replace(/[._-]/g,' ');if(/mediodia|medio dia|12:00|12\s*(pm|p\.m\.)/.test(s))return 'Mediodía';if(/\bextra\b/.test(s))return 'Extra';if(/clasico/.test(s))return 'Clásico';if(/de las?\s*7|delas?\s*7|las siete|de las siete|7\s*(pm|p\.m\.)|19:00/.test(s))return 'De las 7';if(/de las?\s*3|delas?\s*3|las tres|de las tres|3\s*(pm|p\.m\.)|15:00/.test(s))return 'De las 3';return ''}
@@ -151,7 +150,7 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
  const resultIndexes=headers.map((h,i)=>({h,i})).filter(x=>!/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/.test(x.h)&&/(resultado|numeros?|combinacion|ganador|bolas?|numero\s*[1-6]|bola\s*[1-6]|\b[1-6]\b)/.test(x.h));
  const wideCols=headers.map((h,i)=>({h,i,gameId:detectGame(h),draw:detectGame(h)==='chispazo'?detectChispazoDraw(h):detectDraw(h)})).filter(x=>x.gameId&&(!['tris','chispazo'].includes(x.gameId)||x.draw));
  // Formato ancho: cada columna representa un juego o una modalidad TRIS.
- for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim():'';for(const col of wideCols){if(userForcedGame&&userForcedGame!==col.gameId)continue;for(const value of extractResult(row[col.i],col.gameId,col.h))addDetected(found,col.gameId,col.draw,'',value,date)}}
+for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim():'';for(const col of wideCols){if(userForcedGame&&userForcedGame!==col.gameId)continue;for(const value of extractResult(row[col.i],col.gameId,col.h))addDetected(found,col.gameId,col.draw,'',value,date)}}
  // Formato vertical: juego, sorteo y resultado en columnas separadas; admite CSV mixto.
  for(const row of data){
   // Si hay columnas con nombres de juegos/sorteos, el archivo es formato ancho.
@@ -181,8 +180,16 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
  const unique=[];for(const x of found){const k=[x.gameId,x.draw||'',norm(x.date||''),String(x.value)].join('|');if(seen.has(k))continue;seen.add(k);unique.push(x)}
  if(!unique.length)throw Error(`Se reconocieron ${found.length} filas, pero todas ya estaban importadas. No se duplicaron registros.`);
  const grouped=new Map();for(const r of unique){const k=[r.gameId,r.draw,r.mode].join('|');if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(r)}
+ const previousRecords=records;records=records.slice();
  for(const [k,items] of grouped){const [gameId,draw,mode]=k.split('|'),g=games.find(x=>x.id===gameId);const entries=items.map(x=>({value:x.value,date:x.date,importedAt:new Date().toISOString()}));records.push({gameId,draw,mode,values:entries.map(x=>x.value),entries,name:g?.name||gameId,gameLabel:gameId==='tris'?`TRIS · ${draw}`:gameId==='chispazo'?`CHISPAZO · ${draw}`:g?.name||gameId,count:entries.length,file:fileName,date:items.map(x=>x.date).filter(Boolean).sort((a,b)=>dateRank(a)-dateRank(b)).at(-1)||new Date().toLocaleDateString('es-MX')})}
- updateTrackedHits();persist();$('#importStatus').textContent=`Listo: ${unique.length} resultados nuevos reconocidos (${found.length-unique.length} duplicados omitidos), organizados en ${grouped.size} grupos.`;
+ const oldRecords=previousRecords,oldTracked=tracked.map(c=>({...c}));
+ updateTrackedHits();
+ if(!persist()){
+  records=oldRecords;
+  tracked=oldTracked;
+  throw Error('No se pudieron guardar los resultados importados. Tus datos anteriores se conservaron; descarga un respaldo y libera espacio antes de volver a intentarlo.');
+ }
+ $('#importStatus').textContent=`Listo: ${unique.length} resultados nuevos reconocidos (${found.length-unique.length} duplicados omitidos), organizados en ${grouped.size} grupos.`;
 }
 function allEntriesFor(gameId,draw=''){
  const matching=records.filter(r=>r.gameId===gameId&&(
@@ -294,7 +301,7 @@ function renderCombos(){
  tracked.filter(c=>c.strategy).forEach(c=>{const k=c.strategy;grouped[k]??={total:0,exact:0,partial:0};grouped[k].total++;if(c.hit?.exact)grouped[k].exact++;else if(c.hit)grouped[k].partial++});
  const strategyRows=Object.entries(grouped).map(([name,v])=>`<tr><td>${escapeHtml(name)}</td><td>${v.total}</td><td>${v.exact}</td><td>${v.partial}</td></tr>`).join('');
  const summary=`<section class="position-panel"><h3>Auditoría de combinaciones</h3><p class="muted">Seguimiento de jugadas guardadas y resultados posteriores disponibles en el historial.</p><div class="freq-grid"><div class="freq-card"><b>Jugadas registradas</b><p>${tracked.length}</p></div><div class="freq-card"><b>Coincidencias exactas</b><p>${exact}</p></div><div class="freq-card"><b>Coincidencias parciales</b><p>${partial}</p></div><div class="freq-card"><b>Sin resultado posterior</b><p>${pending}</p></div></div>${strategyRows?`<h4>Rendimiento por estrategia TRIS</h4><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Estrategia</th><th>Jugadas</th><th>Exactas</th><th>Parciales</th></tr></thead><tbody>${strategyRows}</tbody></table></div>`:''}<p class="muted">Las coincidencias parciales son solo métricas de comparación y no se contabilizan como premios. La auditoría depende de que los resultados posteriores estén cargados con fecha correcta.</p></section>`;
- box.innerHTML=summary+tracked.slice(-30).reverse().map(c=>{const hit=c.hit||null;return `<article class="track-row"><div><b>${escapeHtml(c.gameLabel)}${c.draw?` · ${escapeHtml(c.draw)}`:''}${c.strategy?` · ${escapeHtml(c.strategy)}`:''}</b><div class="track-value">${escapeHtml(c.value)}</div><small>${new Date(c.createdAt).toLocaleString('es-MX')}</small></div><div class="track-status">${hit?`<b>${hit.exact?'Coincidencia exacta':'Coincidencia parcial (sin premio)'}</b><small>${hit.matches} ${escapeHtml(hit.kind||'coincidencias')} · ${escapeHtml(hit.date||'')} · Resultado ${escapeHtml(hit.result||'')}</small>`:'<small>En seguimiento</small>'}</div></article>`}).join('');
+box.innerHTML=summary+tracked.slice(-30).reverse().map(c=>{const hit=c.hit||null;return `<article class="track-row"><div><b>${escapeHtml(c.gameLabel)}${c.draw?` · ${escapeHtml(c.draw)}`:''}${c.strategy?` · ${escapeHtml(c.strategy)}`:''}</b><div class="track-value">${escapeHtml(c.value)}</div><small>${new Date(c.createdAt).toLocaleString('es-MX')}</small></div><div class="track-status">${hit?`<b>${hit.exact?'Coincidencia exacta':'Coincidencia parcial (sin premio)'}</b><small>${hit.matches} ${escapeHtml(hit.kind||'coincidencias')} · ${escapeHtml(hit.date||'')} · Resultado ${escapeHtml(hit.result||'')}</small>`:'<small>En seguimiento</small>'}</div></article>`}).join('');
 }
 function renderAll(){
  renderHistory();
@@ -428,8 +435,8 @@ function generateOne(){
  const mode=$('#mode').value,draw=selectedDraw();
  if(active.id==='tris'){const d=mode==='3 cifras'?3:mode==='4 cifras'?4:5;if(mode==='Pares')return String(Math.floor(Math.random()*100)).padStart(2,'0');const weights=trisPositionWeights(draw,d);return Array.from({length:d},(_,i)=>String(weightedPick(weights[i]))).join('')}
  if(active.id==='zodiaco'){const digits=zodiacDigitWeights().map(weights=>String(weightedPick(weights))).join('');const sign=zodiac[weightedPick(zodiacSignWeights())];return `${digits} | ${sign}`;}
- if(active.id==='chispazo'){const weights=numberWeights('chispazo',draw,28),chosen=new Set();while(chosen.size<5){const idx=weightedPick(weights);chosen.add(idx+1)}return [...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ')}
- const weights=numberWeights(active.id,'',56),chosen=new Set();while(chosen.size<6){const idx=weightedPick(weights);chosen.add(idx+1)}return [...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ')
+ if(active.id==='chispazo'){const weights=numberWeights('chispazo',draw,28),chosen=new Set();while(chosen.size<5){const idx=weightedPick(weights);chosen.add(idx+1)}return
+[...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ')
 }
 // Motor experimental de diez estrategias para TRIS: pondera frecuencia, recencia y ausencia por posición.
 function trisStrategyRows(draw){
@@ -452,15 +459,18 @@ function trisStrategyRows(draw){
  ];
  const seen=new Set(),rows=[];
  for(const [name,weightFn] of strategies){
-  let value='',rawScore=0;
+  let value='';
   for(let p=0;p<5;p++){
    const weights=Array.from({length:10},(_,d)=>weightFn(p,d));
-   const digit=String(weightedPick(weights));value+=digit;
-   rawScore+=Math.log(weights[Number(digit)]/weights.reduce((a,b)=>a+b,0));
+   value+=String(weightedPick(weights));
   }
-  if(seen.has(value)){for(let tries=0;tries<8&&seen.has(value);tries++){value=Array.from({length:5},(_,p)=>String(weightedPick(Array.from({length:10},(_,d)=>weightFn(p,d))))).join('')}}
+  if(seen.has(value)){
+   for(let tries=0;tries<8&&seen.has(value);tries++){
+    value=Array.from({length:5},(_,p)=>String(weightedPick(Array.from({length:10},(_,d)=>weightFn(p,d))))).join('');
+   }
+  }
   seen.add(value);
-  rows.push({name,value,score:Math.max(50,Math.min(99,Math.round(85+rawScore*2)))});
+  rows.push({name,value});
  }
  return rows;
 }
@@ -494,23 +504,30 @@ $('#generateBtn').onclick=()=>{
  let out=[],coveragePanel='';
  if(isCoverageGame){
   const rows=generateMelateCoverage(active.id,Math.min(n,30));
-  out=rows.map(row=>row.map(v=>String(v).padStart(2,'0')).join(' · '));
+ out=rows.map(row=>row.map(v=>String(v).padStart(2,'0')).join(' · '));
   const unique=new Set(rows.flat());
   coveragePanel=`<section class="position-panel" style="grid-column:1/-1"><h3>Cobertura inteligente · ${escapeHtml(active.name)}</h3><p class="muted">${rows.length} jugadas · ${unique.size} números distintos cubiertos de 56. El algoritmo favorece diversidad entre jugadas y equilibrio descriptivo.</p><p class="muted">La cobertura no aumenta la probabilidad matemática de una combinación individual ni garantiza premios.</p></section>`;
  }else{
   out=Array.from({length:n},generateOne);
  }
  const now=new Date().toISOString();
+ const previousTracked=tracked;
+ tracked=tracked.slice();
  out.forEach(value=>tracked.push({id:`${now}-${Math.random().toString(36).slice(2,8)}`,gameId:active.id,gameLabel,draw,mode,value,createdAt:now}));
  let classified='';
  if(active.id==='tris'&&mode==='5 cifras'){
   const rows=trisStrategyRows(draw);
   rows.forEach((r,i)=>tracked.push({id:`${now}-sniper-${i}-${Math.random().toString(36).slice(2,6)}`,gameId:'tris',gameLabel:'TRIS',draw,mode:'5 cifras',value:r.value,createdAt:now,strategy:r.name}));
-  classified=`<section class="position-panel" style="grid-column:1/-1"><h3>10 jugadas clasificadas · Motor experimental</h3><p class="muted">Estrategias calculadas con el histórico seleccionado. La puntuación es un índice interno, no una probabilidad de ganar.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>ID</th><th>Estrategia</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>Índice</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>#${String(i+1).padStart(2,'0')}</td><td>${escapeHtml(r.name)}</td>${r.value.split('').map(d=>`<td style="text-align:center;padding:6px">${d}</td>`).join('')}<td>${r.score}/100</td></tr>`).join('')}</tbody></table></div><p class="muted">También se guardaron en Centro de Aciertos para evaluación posterior.</p></section>`;
+  classified=`<section class="position-panel" style="grid-column:1/-1"><h3>10 jugadas clasificadas · Motor experimental</h3><p class="muted">Estrategias calculadas con el histórico seleccionado. Se muestran las combinaciones producidas por cada estrategia; no se asigna un porcentaje de éxito porque no está validado estadísticamente.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>ID</th><th>Estrategia</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>#${String(i+1).padStart(2,'0')}</td><td>${escapeHtml(r.name)}</td>${r.value.split('').map(d=>`<td style="text-align:center;padding:6px">${d}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="muted">También se guardaron en Centro de Aciertos para evaluación posterior.</p></section>`;
  }
- localStorage.setItem(comboKey,JSON.stringify(tracked));
+ updateTrackedHits();
+ if(!persist()){
+  tracked=previousTracked;
+  $('#generated').innerHTML='<p class="muted">No se pudieron guardar las combinaciones. No se confirmó el guardado; descarga un respaldo y libera espacio antes de intentarlo de nuevo.</p>';
+  return;
+ }
  $('#generated').innerHTML=coveragePanel+classified+out.map((v,i)=>`<div class="combo">${String(i+1).padStart(2,'0')} · ${escapeHtml(v)}</div>`).join('')+'<p class="muted" style="grid-column:1/-1">Combinaciones guardadas automáticamente en Centro de Aciertos para seguimiento. No son predicciones.</p>';
- renderCombos();
+
 };
 function matchCombo(combo,result){
  if(combo.gameId==='zodiaco'){
@@ -607,7 +624,7 @@ function updateTrackedHits(){
 $('#syncTrisBtn')?.addEventListener('click',syncOfficialTris);
 $('#importGame').addEventListener('change',()=>{$('#importDrawWrap').hidden=!['tris','chispazo'].includes($('#importGame').value);$('#importDrawLabel').textContent=$('#importGame').value==='chispazo'?'Sorteo Chispazo del archivo':'Sorteo TRIS del archivo';$('#importDraw').innerHTML=($('#importGame').value==='chispazo'?chispazoDraws:trisDraws).map(m=>`<option>${m}</option>`).join('')});
 $('#csvFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const rows=parseCSV(await f.text());importRows(rows,f.name,$('#importGame').value,$('#importDraw').value)}catch(err){$('#importStatus').textContent=`No se pudo procesar el CSV: ${err.message}`}e.target.value=''});
-$('#clearBtn').onclick=()=>{if(confirm('¿Borrar todos los registros históricos importados guardados en este dispositivo? Las combinaciones guardadas no se borrarán.')){records=[];localStorage.setItem(key,'[]');renderAll();$('#importStatus').textContent='Historial importado borrado.'}};
+$('#clearBtn').onclick=()=>{if(confirm('¿Borrar todos los registros históricos importados guardados en este dispositivo? Las combinaciones guardadas no se borrarán.')){const previousRecords=records;records=[];if(!persist()){records=previousRecords;$('#importStatus').textContent='No se pudo borrar el historial porque no fue posible guardar el cambio. Tus datos anteriores se conservaron.';return}$('#importStatus').textContent='Historial importado borrado.'}};
 const backupBox=document.createElement('section');backupBox.className='position-panel';backupBox.style.margin='18px auto';backupBox.style.maxWidth='1100px';backupBox.innerHTML='<h3>Respaldo y protección de datos</h3><p class="muted">Descarga una copia de tus historiales y combinaciones antes de actualizar NUMERIQ AI. Restaurar combina los datos del respaldo con los actuales; no borra lo que ya tienes.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" id="backupExportBtn">Descargar respaldo</button><button type="button" id="backupImportBtn">Restaurar respaldo</button><button type="button" id="storageProtectBtn">Proteger almacenamiento</button><button type="button" id="storageCheckBtn">Revisar espacio</button><input type="file" id="backupFile" accept=".json,application/json" hidden></div><p id="storageHealthStatus" class="muted" aria-live="polite">El almacenamiento del navegador puede tener límites; conserva una copia externa.</p>';
 document.body.appendChild(backupBox);
 $('#backupExportBtn').addEventListener('click',exportBackup);
