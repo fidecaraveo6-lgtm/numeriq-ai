@@ -149,7 +149,7 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
  const dateIndex=headers.findIndex(h=>/(^|\b)(fecha|date|dia del sorteo|fecha del sorteo)(\b|$)/.test(h));
  const gameIndex=headers.findIndex(h=>/(^|\b)(juego|nombre del juego|producto|loteria|tipo de juego)(\b|$)/.test(h));
  const drawIndex=headers.findIndex(h=>/(sorteo|modalidad|turno|horario|hora)/.test(h));
- const resultIndexes=headers.map((h,i)=>({h,i})).filter(x=>!/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/.test(x.h)&&/(resultado|numeros?|combinacion|ganador|bolas?|numero\s*[1-6]|bola\s*[1-6]|\b[1-6]\b)/.test(x.h));
+ const resultIndexes=headers.map((h,i)=>({h,i})).filter(x=>!/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/.test(x.h)&&/(resultado|numeros?|combinacion|ganador|bolas?|numero\\s*[1-6]|bola\\s*[1-6]|\\b[1-6]\\b|signo|zodiacal)/.test(x.h));
  const wideCols=headers.map((h,i)=>({h,i,gameId:detectGame(h),draw:detectGame(h)==='chispazo'?detectChispazoDraw(h):detectDraw(h)})).filter(x=>x.gameId&&(!['tris','chispazo'].includes(x.gameId)||x.draw));
  // Formato ancho: cada columna representa un juego o una modalidad TRIS.
 for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim():'';for(const col of wideCols){if(userForcedGame&&userForcedGame!==col.gameId)continue;for(const value of extractResult(row[col.i],col.gameId,col.h))addDetected(found,col.gameId,col.draw,'',value,date)}}
@@ -166,12 +166,12 @@ for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim()
   let vals=[];
   if(resultIndexes.length){
    const cells=resultIndexes.map(c=>String(row[c.i]??'').trim()).filter(Boolean);
-   if(gameId==='tris'||gameId==='zodiaco')for(const cell of cells)vals.push(...extractResult(cell,gameId));
+   if(gameId==='tris')for(const cell of cells)vals.push(...extractResult(cell,gameId));else if(gameId==='zodiaco'){const combined=cells.join(' | ');vals.push(...extractResult(combined,gameId));}
    else {const need=gameId==='chispazo'?5:6,max=gameId==='chispazo'?28:56;const nums=cells.flatMap(v=>(v.match(/\d{1,2}/g)||[])).map(Number);if(nums.length===need&&nums.every(n=>n>=1&&n<=max)&&new Set(nums).size===need)vals.push(nums.map(n=>String(n).padStart(2,'0')).join(' · '));else for(const cell of cells)vals.push(...extractResult(cell,gameId));}
   }else{
    const ignored=/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/;
    const cells=row.filter((v,i)=>!ignored.test(headers[i]||'')&&String(v??'').trim()!=='');
-   if(gameId==='tris'||gameId==='zodiaco')for(const cell of cells)vals.push(...extractResult(cell,gameId));
+   if(gameId==='tris')for(const cell of cells)vals.push(...extractResult(cell,gameId));else if(gameId==='zodiaco'){const combined=cells.join(' | ');vals.push(...extractResult(combined,gameId));}
    else {const need=gameId==='chispazo'?5:6,max=gameId==='chispazo'?28:56;const nums=cells.flatMap(v=>(String(v).match(/\d{1,2}/g)||[])).map(Number);const picked=nums.slice(-need);if(picked.length===need&&picked.every(n=>n>=1&&n<=max)&&new Set(picked).size===need)vals.push(picked.map(n=>String(n).padStart(2,'0')).join(' · '));}
   }
   vals.forEach(value=>addDetected(found,gameId,draw,'',value,date));
