@@ -1,4 +1,4 @@
-// NUMERIQ AI 2.1 — optimización de renderizado, auditoría y generación; conserva el formato de datos.
+// NUMERIQ AI 2.2 — guardado protegido de importaciones y combinaciones; conserva el formato de datos.
 // NUMERIQ AI 2.0 — nombres de juegos y sorteos separados en el historial.
 const trisDraws=['Mediodía','De las 3','De las 7','Clásico','Extra'];
 const chispazoDraws=['De las 3 de la tarde','De las 9 de la noche'];
@@ -18,6 +18,7 @@ let active=null,deferredPrompt=null;const $=s=>document.querySelector(s);
 function persist(){
  const previousRecords=localStorage.getItem(key),previousCombos=localStorage.getItem(comboKey);
  try{
+  updateTrackedHits();
   localStorage.setItem(key,JSON.stringify(records));
   localStorage.setItem(comboKey,JSON.stringify(tracked));
   renderAll();return true;
@@ -53,7 +54,7 @@ function exportBackup(){
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download=`NUMERIQ_AI_respaldo_${new Date().toISOString().slice(0,10)}.json`;
- document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  const status=$('#importStatus');if(status)status.textContent='Copia de seguridad descargada. Guárdala fuera del teléfono para proteger tus datos.';
 }
 async function restoreBackup(file){
@@ -83,13 +84,18 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function norm(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
 
 function zodiacResultParts(value){
- const m=String(value||'').trim().match(/^(\d{4})\s*[|·-]\s*(Aries|Tauro|Géminis|Cáncer|Leo|Virgo|Libra|Escorpio|Sagitario|Capricornio|Acuario|Piscis)$/i);
+ const m=String(value||'').trim().match(/^(\d{4})\s*[|·-]\s*(Aries|Tauro|Géminis|Cáncer|Leo|Virgo|Libra|Escorpio|Escorpión|Sagitario|Capricornio|Acuario|Piscis)$/i);
  if(!m)return null;
- const sign=zodiac.find(z=>norm(z)===norm(m[2]));
+ const rawSign=norm(m[2])==='escorpion'?'Escorpio':m[2];
+ const sign=zodiac.find(z=>norm(z)===norm(rawSign));
  return sign?{number:m[1],sign}:null;
 }
 function zodiacDigitWeights(){
- const entries=allEntriesFor('zodiaco').map(e=>zodiacResultParts(e.value)).filter(Boolean);
+ const entries=allEntriesFor('zodiaco').map(e=>{
+  const value=String(e.value||'').trim();
+  const paired=zodiacResultParts(value);
+  return paired||(/^\d{4}$/.test(value)?{number:value}:null);
+ }).filter(Boolean);
  return Array.from({length:4},(_,pos)=>{
   const counts=Array(10).fill(1);
   entries.forEach(e=>counts[Number(e.number[pos])]++);
@@ -98,8 +104,13 @@ function zodiacDigitWeights(){
 }
 function zodiacSignWeights(){
  const counts=Array(12).fill(1);
- allEntriesFor('zodiaco').map(e=>zodiacResultParts(e.value)).filter(Boolean).forEach(e=>{
-  const i=zodiac.indexOf(e.sign);if(i>=0)counts[i]++;
+ allEntriesFor('zodiaco').forEach(e=>{
+  const value=String(e.value||'').trim();
+  const paired=zodiacResultParts(value);
+  const raw=paired?paired.sign:value;
+  const sign=zodiac.find(z=>norm(z)===norm(raw));
+  const i=sign?zodiac.indexOf(sign):-1;
+  if(i>=0)counts[i]++;
  });
  return counts;
 }
@@ -123,7 +134,6 @@ function saveZodiacResult(){
  if(status)status.textContent=`Resultado guardado: ${value} · ${date}`;
  $('#zodiacResultNumber').value='';
 }
-
 function dateRank(s){if(!s)return 0;const v=String(s).trim();let m=v.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);if(m)return Date.UTC(+m[1],+m[2]-1,+m[3]);m=v.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);if(m)return Date.UTC(+m[3],+m[2]-1,+m[1]);const t=Date.parse(v);return Number.isFinite(t)?t:0}
 function dateFromRow(row,headers){const i=headers.findIndex(h=>/(^|\b)(fecha|date|dia del sorteo)(\b|$)/.test(h));return i>=0?String(row[i]||'').trim():''}
 function detectDraw(s){s=norm(s).replace(/[._-]/g,' ');if(/mediodia|medio dia|12:00|12\s*(pm|p\.m\.)/.test(s))return 'Mediodía';if(/\bextra\b/.test(s))return 'Extra';if(/clasico/.test(s))return 'Clásico';if(/de las?\s*7|delas?\s*7|las siete|de las siete|7\s*(pm|p\.m\.)|19:00/.test(s))return 'De las 7';if(/de las?\s*3|delas?\s*3|las tres|de las tres|3\s*(pm|p\.m\.)|15:00/.test(s))return 'De las 3';return ''}
@@ -133,7 +143,7 @@ function parseCSV(text){text=String(text||'').replace(/^\uFEFF/,'');const sample
 function extractResult(cell,gameId,header=''){
  const s=String(cell??'').trim();if(!s)return [];
  if(gameId==='tris'){const m=s.match(/\b\d{3,5}\b/g);return m||[]}
- if(gameId==='zodiaco'){const m=s.match(/\b\d{4}\b/g);if(m)return m;const z=zodiac.find(v=>norm(s).includes(norm(v)));return z?[z]:[]}
+ if(gameId==='zodiaco'){const parsed=zodiacResultParts(s);if(parsed)return [`${parsed.number} | ${parsed.sign}`];const m=s.match(/\b\d{4}\b/g);if(m)return m;const z=zodiac.find(v=>norm(s).includes(norm(v)))||(norm(s).includes('escorpion')?'Escorpio':'');return z?[z]:[]}
  const nums=(s.match(/\d{1,2}/g)||[]).map(Number);
  const needed=gameId==='chispazo'?5:6,max=gameId==='chispazo'?28:56;
  if(nums.length!==needed||nums.some(n=>n<1||n>max)||new Set(nums).size!==needed)return [];
@@ -148,10 +158,10 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
  const dateIndex=headers.findIndex(h=>/(^|\b)(fecha|date|dia del sorteo|fecha del sorteo)(\b|$)/.test(h));
  const gameIndex=headers.findIndex(h=>/(^|\b)(juego|nombre del juego|producto|loteria|tipo de juego)(\b|$)/.test(h));
  const drawIndex=headers.findIndex(h=>/(sorteo|modalidad|turno|horario|hora)/.test(h));
- const resultIndexes=headers.map((h,i)=>({h,i})).filter(x=>!/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/.test(x.h)&&/(resultado|numeros?|combinacion|ganador|bolas?|numero\s*[1-6]|bola\s*[1-6]|\b[1-6]\b)/.test(x.h));
+ const resultIndexes=headers.map((h,i)=>({h,i})).filter(x=>!/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/.test(x.h)&&/(resultado|numeros?|combinacion|ganador|bolas?|numero\\s*[1-6]|bola\\s*[1-6]|\\b[1-6]\\b|signo|zodiacal)/.test(x.h));
  const wideCols=headers.map((h,i)=>({h,i,gameId:detectGame(h),draw:detectGame(h)==='chispazo'?detectChispazoDraw(h):detectDraw(h)})).filter(x=>x.gameId&&(!['tris','chispazo'].includes(x.gameId)||x.draw));
  // Formato ancho: cada columna representa un juego o una modalidad TRIS.
- for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim():'';for(const col of wideCols){if(userForcedGame&&userForcedGame!==col.gameId)continue;for(const value of extractResult(row[col.i],col.gameId,col.h))addDetected(found,col.gameId,col.draw,'',value,date)}}
+for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim():'';for(const col of wideCols){if(userForcedGame&&userForcedGame!==col.gameId)continue;for(const value of extractResult(row[col.i],col.gameId,col.h))addDetected(found,col.gameId,col.draw,'',value,date)}}
  // Formato vertical: juego, sorteo y resultado en columnas separadas; admite CSV mixto.
  for(const row of data){
   // Si hay columnas con nombres de juegos/sorteos, el archivo es formato ancho.
@@ -165,12 +175,12 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
   let vals=[];
   if(resultIndexes.length){
    const cells=resultIndexes.map(c=>String(row[c.i]??'').trim()).filter(Boolean);
-   if(gameId==='tris'||gameId==='zodiaco')for(const cell of cells)vals.push(...extractResult(cell,gameId));
+   if(gameId==='tris')for(const cell of cells)vals.push(...extractResult(cell,gameId));else if(gameId==='zodiaco'){const combined=cells.join(' | ');vals.push(...extractResult(combined,gameId));}
    else {const need=gameId==='chispazo'?5:6,max=gameId==='chispazo'?28:56;const nums=cells.flatMap(v=>(v.match(/\d{1,2}/g)||[])).map(Number);if(nums.length===need&&nums.every(n=>n>=1&&n<=max)&&new Set(nums).size===need)vals.push(nums.map(n=>String(n).padStart(2,'0')).join(' · '));else for(const cell of cells)vals.push(...extractResult(cell,gameId));}
   }else{
    const ignored=/(fecha|date|juego|producto|loteria|sorteo|modalidad|turno|horario|hora|concurso|folio|numero de sorteo|multiplicador)/;
    const cells=row.filter((v,i)=>!ignored.test(headers[i]||'')&&String(v??'').trim()!=='');
-   if(gameId==='tris'||gameId==='zodiaco')for(const cell of cells)vals.push(...extractResult(cell,gameId));
+   if(gameId==='tris')for(const cell of cells)vals.push(...extractResult(cell,gameId));else if(gameId==='zodiaco'){const combined=cells.join(' | ');vals.push(...extractResult(combined,gameId));}
    else {const need=gameId==='chispazo'?5:6,max=gameId==='chispazo'?28:56;const nums=cells.flatMap(v=>(String(v).match(/\d{1,2}/g)||[])).map(Number);const picked=nums.slice(-need);if(picked.length===need&&picked.every(n=>n>=1&&n<=max)&&new Set(picked).size===need)vals.push(picked.map(n=>String(n).padStart(2,'0')).join(' · '));}
   }
   vals.forEach(value=>addDetected(found,gameId,draw,'',value,date));
@@ -181,8 +191,15 @@ function importRows(rows,fileName,overrideGame='auto',overrideDraw=''){
  const unique=[];for(const x of found){const k=[x.gameId,x.draw||'',norm(x.date||''),String(x.value)].join('|');if(seen.has(k))continue;seen.add(k);unique.push(x)}
  if(!unique.length)throw Error(`Se reconocieron ${found.length} filas, pero todas ya estaban importadas. No se duplicaron registros.`);
  const grouped=new Map();for(const r of unique){const k=[r.gameId,r.draw,r.mode].join('|');if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(r)}
+ const previousRecords=records;records=records.slice();
  for(const [k,items] of grouped){const [gameId,draw,mode]=k.split('|'),g=games.find(x=>x.id===gameId);const entries=items.map(x=>({value:x.value,date:x.date,importedAt:new Date().toISOString()}));records.push({gameId,draw,mode,values:entries.map(x=>x.value),entries,name:g?.name||gameId,gameLabel:gameId==='tris'?`TRIS · ${draw}`:gameId==='chispazo'?`CHISPAZO · ${draw}`:g?.name||gameId,count:entries.length,file:fileName,date:items.map(x=>x.date).filter(Boolean).sort((a,b)=>dateRank(a)-dateRank(b)).at(-1)||new Date().toLocaleDateString('es-MX')})}
- updateTrackedHits();persist();$('#importStatus').textContent=`Listo: ${unique.length} resultados nuevos reconocidos (${found.length-unique.length} duplicados omitidos), organizados en ${grouped.size} grupos.`;
+ const oldRecords=previousRecords,oldTracked=tracked.map(c=>({...c}));
+ if(!persist()){
+  records=oldRecords;
+  tracked=oldTracked;
+  throw Error('No se pudieron guardar los resultados importados. Tus datos anteriores se conservaron; descarga un respaldo y libera espacio antes de volver a intentarlo.');
+ }
+ $('#importStatus').textContent=`Listo: ${unique.length} resultados nuevos reconocidos (${found.length-unique.length} duplicados omitidos), organizados en ${grouped.size} grupos.`;
 }
 function allEntriesFor(gameId,draw=''){
  const matching=records.filter(r=>r.gameId===gameId&&(
@@ -272,7 +289,7 @@ function renderLatestResults(){
   if(g.id==='tris')trisDraws.forEach(draw=>targets.push({id:g.id,draw,label:`TRIS · ${draw}`}));
   else if(g.id==='chispazo'){
    chispazoDraws.forEach(draw=>targets.push({id:g.id,draw,label:`CHISPAZO · ${draw}`}));
-   targets.push({id:g.id,draw:'__legacy__',label:'CHISPAZO · Historial anterior (sin sorteo identificado)'});
+   // No mostrar la tarjeta heredada: los dos sorteos oficiales se presentan por separado.
   }
   else targets.push({id:g.id,draw:'',label:g.name});
  });
@@ -286,7 +303,6 @@ function renderHistory(){const total=records.reduce((a,r)=>a+(r.values?.length||
 function renderCombos(){
  const box=$('#trackedCombos');if(!box)return;
  if(!tracked.length){box.innerHTML='<p class="muted">Las combinaciones que generes aparecerán aquí para darles seguimiento.</p>';return}
- updateTrackedHits();
  const exact=tracked.filter(c=>c.hit?.exact).length;
  const partial=tracked.filter(c=>c.hit&&!c.hit.exact).length;
  const pending=tracked.length-exact-partial;
@@ -294,7 +310,7 @@ function renderCombos(){
  tracked.filter(c=>c.strategy).forEach(c=>{const k=c.strategy;grouped[k]??={total:0,exact:0,partial:0};grouped[k].total++;if(c.hit?.exact)grouped[k].exact++;else if(c.hit)grouped[k].partial++});
  const strategyRows=Object.entries(grouped).map(([name,v])=>`<tr><td>${escapeHtml(name)}</td><td>${v.total}</td><td>${v.exact}</td><td>${v.partial}</td></tr>`).join('');
  const summary=`<section class="position-panel"><h3>Auditoría de combinaciones</h3><p class="muted">Seguimiento de jugadas guardadas y resultados posteriores disponibles en el historial.</p><div class="freq-grid"><div class="freq-card"><b>Jugadas registradas</b><p>${tracked.length}</p></div><div class="freq-card"><b>Coincidencias exactas</b><p>${exact}</p></div><div class="freq-card"><b>Coincidencias parciales</b><p>${partial}</p></div><div class="freq-card"><b>Sin resultado posterior</b><p>${pending}</p></div></div>${strategyRows?`<h4>Rendimiento por estrategia TRIS</h4><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Estrategia</th><th>Jugadas</th><th>Exactas</th><th>Parciales</th></tr></thead><tbody>${strategyRows}</tbody></table></div>`:''}<p class="muted">Las coincidencias parciales son solo métricas de comparación y no se contabilizan como premios. La auditoría depende de que los resultados posteriores estén cargados con fecha correcta.</p></section>`;
- box.innerHTML=summary+tracked.slice(-30).reverse().map(c=>{const hit=c.hit||null;return `<article class="track-row"><div><b>${escapeHtml(c.gameLabel)}${c.draw?` · ${escapeHtml(c.draw)}`:''}${c.strategy?` · ${escapeHtml(c.strategy)}`:''}</b><div class="track-value">${escapeHtml(c.value)}</div><small>${new Date(c.createdAt).toLocaleString('es-MX')}</small></div><div class="track-status">${hit?`<b>${hit.exact?'Coincidencia exacta':'Coincidencia parcial (sin premio)'}</b><small>${hit.matches} ${escapeHtml(hit.kind||'coincidencias')} · ${escapeHtml(hit.date||'')} · Resultado ${escapeHtml(hit.result||'')}</small>`:'<small>En seguimiento</small>'}</div></article>`}).join('');
+box.innerHTML=summary+tracked.slice(-30).reverse().map(c=>{const hit=c.hit||null;return `<article class="track-row"><div><b>${escapeHtml(c.gameLabel)}${c.draw?` · ${escapeHtml(c.draw)}`:''}${c.strategy?` · ${escapeHtml(c.strategy)}`:''}</b><div class="track-value">${escapeHtml(c.value)}</div><small>${new Date(c.createdAt).toLocaleString('es-MX')}</small></div><div class="track-status">${hit?`<b>${hit.exact?'Coincidencia exacta':'Coincidencia parcial (sin premio)'}</b><small>${hit.matches} ${escapeHtml(hit.kind||'coincidencias')} · ${escapeHtml(hit.date||'')} · Resultado ${escapeHtml(hit.result||'')}</small>`:'<small>En seguimiento</small>'}</div></article>`}).join('');
 }
 function renderAll(){
  renderHistory();
@@ -406,7 +422,7 @@ function trisCrossRadar(){
  return compare+`<div class="position-panel"><h3>Radar de coincidencias entre horarios</h3><p class="muted">Compara los resultados de dos horarios en fechas coincidentes. “Dígitos compartidos” cuenta dígitos distintos presentes en ambos resultados; “misma posición” cuenta coincidencias exactas en R1–R5. Se muestran ventanas de 7, 15, 30 y 50 fechas (o las disponibles si hay menos). Es un análisis histórico, no una predicción.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Horarios</th>${windows.map(n=>`<th colspan="3">Últimas ${n}</th>`).join('')}</tr><tr><th></th>${windows.map(()=>'<th>Fechas</th><th>Dígitos<br>compartidos</th><th>Misma<br>posición</th>').join('')}</tr></thead><tbody>${pairs.map(p=>`<tr><td>${escapeHtml(p.a)} ↔ ${escapeHtml(p.b)}</td>${windows.map(n=>`<td>${p.stats[n].count}</td><td>${p.stats[n].shared}</td><td>${p.stats[n].positional}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
 }
 
-function updateStatsPanel(){if(!active)return;const draw=selectedDraw(),orderedEntries=allEntriesFor(active.id,draw).map((e,i)=>({...e,_order:i})).sort((a,b)=>{const da=dateRank(a.date),db=dateRank(b.date);return da&&db?da-db:da?1:db?-1:a._order-b._order}),vals=orderedEntries.map(e=>e.value);const freq={};if(active.id==='tris'||active.id==='zodiaco'){for(let i=0;i<=9;i++)freq[String(i)]=0}else{const max=active.id==='chispazo'?28:56;for(let i=1;i<=max;i++)freq[String(i)]=0}vals.forEach(v=>{if(active.id==='tris'||active.id==='zodiaco'){String(v).replace(/\D/g,'').split('').forEach(d=>freq[d]=(freq[d]||0)+1)}else String(v).split(/[ ·,;\s]+/).forEach(n=>{if(/^\d+$/.test(n)){const k=String(Number(n));if(k in freq)freq[k]++}})});const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]||Number(a[0])-Number(b[0]));const hot=sorted.slice(0,5),cold=sorted.slice(-5).reverse();const label=['tris','chispazo'].includes(active.id)?`${active.name} · ${draw}`:active.name;const positionPanel=active.id==='tris'?(()=>{const clean=vals.map(v=>String(v).replace(/\D/g,'')).filter(v=>v.length===5);const rows=Array.from({length:5},(_,pos)=>{const counts=Array(10).fill(0),lastSeen=Array(10).fill(null);clean.forEach((v,idx)=>{const d=Number(v[pos]);counts[d]++;lastSeen[d]=clean.length-idx});const max=Math.max(1,...counts);return `<div class="position-row"><b>R${pos+1}</b>${counts.map((n,d)=>`<span title="Dígito ${d}: ${n} veces${lastSeen[d]===null?'; nunca apareció':`; última aparición hace ${lastSeen[d]-1} resultados`}" style="opacity:${0.55+0.45*n/max}"><strong>${d}</strong><small>${n}</small></span>`).join('')}</div>`}).join('');return `<div class="position-panel"><h3>Matriz posicional TRIS</h3><p class="muted">Frecuencia por dígito y posición. Al tocar una celda verás cuántos resultados han pasado desde su última aparición.</p>${rows}<h4>Matriz Fibonacci 5 × 5 (módulo 10)</h4><div class="position-row fibonacci-grid">${[1,1,2,3,5,8,3,1,4,5,9,4,3,7,0,7,7,4,1,5,6,1,7,8,5].map((n,i)=>`<span title="Fila ${Math.floor(i/5)+1}, columna ${i%5+1}"><strong>${n}</strong></span>`).join('')}</div><p class="muted">Referencia matemática construida con la sucesión de Fibonacci reducida módulo 10. Es una visualización exploratoria, no una regla oficial ni una señal predictiva.</p><p class="muted">La matriz describe el historial seleccionado; una ausencia no hace que un dígito sea más probable en el siguiente sorteo.</p></div>${trisCrossRadar()}`})():'';const melatePanel=['melate','revancha','revanchita'].includes(active.id)?(()=>{const draws=vals.map(v=>String(v).split(/[ ·,;\\s]+/).map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=56)).filter(a=>a.length===6);const odd=draws.reduce((s,a)=>s+a.filter(n=>n%2).length,0);const even=draws.reduce((s,a)=>s+a.filter(n=>n%2===0).length,0);const low=draws.reduce((s,a)=>s+a.filter(n=>n<=28).length,0);const high=draws.reduce((s,a)=>s+a.filter(n=>n>28).length,0);const sums=draws.map(a=>a.reduce((s,n)=>s+n,0));const avg=sums.length?(sums.reduce((a,b)=>a+b,0)/sums.length).toFixed(1):'—';const seen=new Set(draws.flat());const coverage=seen.size;const overlap=draws.length>1?draws.slice(1).reduce((sum,d,i)=>sum+d.filter(n=>draws[i].includes(n)).length,0)/(draws.length-1):0;return `<div class="position-panel"><h3>Perfil y cobertura · ${escapeHtml(active.name)}</h3><p class="muted">Análisis exclusivo del historial importado de este juego; no mezcla datos con Melate, Revancha ni Revanchita.</p><div class="freq-grid"><div class="freq-card"><b>Impares / pares</b><p>${odd} / ${even}</p></div><div class="freq-card"><b>1–28 / 29–56</b><p>${low} / ${high}</p></div><div class="freq-card"><b>Suma promedio de 6 números</b><p>${avg}</p></div><div class="freq-card"><b>Sorteos válidos analizados</b><p>${draws.length}</p></div><div class="freq-card"><b>Números distintos vistos</b><p>${coverage} / 56</p></div><div class="freq-card"><b>Repeticiones vs. sorteo anterior</b><p>${overlap.toFixed(2)} promedio</p></div></div><p class="muted">La cobertura cuenta cuántos números distintos aparecen en el historial. La repetición es un resumen descriptivo entre sorteos consecutivos, no una recomendación de apuesta.</p></div>`})():'';const zodiacPanel=active.id==='zodiaco'?(()=>{const entries=vals.map(zodiacResultParts).filter(Boolean);const positions=Array.from({length:4},(_,p)=>{const counts=Array(10).fill(0);entries.forEach(e=>counts[Number(e.number[p])]++);return `<div class="position-row"><b>R${p+1}</b>${counts.map((n,d)=>`<span title="Dígito ${d}: ${n} veces"><strong>${d}</strong><small>${n}</small></span>`).join('')}</div>`}).join('');const signCounts=zodiac.map(sign=>({sign,count:entries.filter(e=>e.sign===sign).length})).sort((a,b)=>b.count-a.count);return `<div class="position-panel"><h3>Análisis ZODIACO · Número y signo</h3><p class="muted">Se analizan ${entries.length} resultados completos con cuatro cifras y signo registrado.</p><h4>Frecuencia por posición</h4>${positions}<h4>Frecuencia por signo</h4><div class="freq-list">${signCounts.map(x=>`<span class="freq-chip"><b>${escapeHtml(x.sign)}</b><small>${x.count} veces</small></span>`).join('')}</div></div>`})():'';const backtestPanel=active.id==='tris'?backtestTris(vals):'';$('#statsContent').innerHTML=`<p><strong>${vals.length}</strong> resultados analizados en ${escapeHtml(label)}.</p>${positionPanel}${zodiacPanel}${backtestPanel}${melatePanel}<div class="freq-grid"><div class="freq-card"><h3>🔥 Números calientes</h3><p class="muted">Los cinco dígitos/números más frecuentes del historial importado</p><div class="freq-list">${hot.map(([n,c])=>`<span class="freq-chip hot"><b>${escapeHtml(n)}</b><small>${c} veces</small></span>`).join('')}</div></div><div class="freq-card"><h3>❄️ Números fríos</h3><p class="muted">Los cinco menos frecuentes; incluye valores con cero apariciones</p><div class="freq-list">${cold.map(([n,c])=>`<span class="freq-chip cold"><b>${escapeHtml(n)}</b><small>${c} veces</small></span>`).join('')}</div></div></div><p class="muted">${vals.length?'Las frecuencias se calculan solo con el historial importado.':'Aún no hay resultados importados para este juego/sorteo; se muestran frecuencias en cero.'} Son estadísticas descriptivas, no predicciones ni garantía de premios.</p>`}
+function updateStatsPanel(){if(!active)return;const draw=selectedDraw(),orderedEntries=allEntriesFor(active.id,draw).map((e,i)=>({...e,_order:i})).sort((a,b)=>{const da=dateRank(a.date),db=dateRank(b.date);return da&&db?da-db:da?1:db?-1:a._order-b._order}),vals=orderedEntries.map(e=>e.value);const freq={};if(active.id==='tris'||active.id==='zodiaco'){for(let i=0;i<=9;i++)freq[String(i)]=0}else{const max=active.id==='chispazo'?28:56;for(let i=1;i<=max;i++)freq[String(i)]=0}vals.forEach(v=>{if(active.id==='tris'||active.id==='zodiaco'){String(v).replace(/\D/g,'').split('').forEach(d=>freq[d]=(freq[d]||0)+1)}else String(v).split(/[ ·,;\s]+/).forEach(n=>{if(/^\d+$/.test(n)){const k=String(Number(n));if(k in freq)freq[k]++}})});const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]||Number(a[0])-Number(b[0]));const hot=sorted.slice(0,5),cold=sorted.slice(-5).reverse();const label=['tris','chispazo'].includes(active.id)?`${active.name} · ${draw}`:active.name;const positionPanel=active.id==='tris'?(()=>{const clean=vals.map(v=>String(v).replace(/\D/g,'')).filter(v=>v.length===5);const rows=Array.from({length:5},(_,pos)=>{const counts=Array(10).fill(0),lastSeen=Array(10).fill(null);clean.forEach((v,idx)=>{const d=Number(v[pos]);counts[d]++;lastSeen[d]=clean.length-idx});const max=Math.max(1,...counts);return `<div class="position-row"><b>R${pos+1}</b>${counts.map((n,d)=>`<span title="Dígito ${d}: ${n} veces${lastSeen[d]===null?'; nunca apareció':`; última aparición hace ${lastSeen[d]-1} resultados`}" style="opacity:${0.55+0.45*n/max}"><strong>${d}</strong><small>${n}</small></span>`).join('')}</div>`}).join('');return `<div class="position-panel"><h3>Matriz posicional TRIS</h3><p class="muted">Frecuencia por dígito y posición. Al tocar una celda verás cuántos resultados han pasado desde su última aparición.</p>${rows}<h4>Matriz Fibonacci 5 × 5 (módulo 10)</h4><div class="position-row fibonacci-grid">${[1,1,2,3,5,8,3,1,4,5,9,4,3,7,0,7,7,4,1,5,6,1,7,8,5].map((n,i)=>`<span title="Fila ${Math.floor(i/5)+1}, columna ${i%5+1}"><strong>${n}</strong></span>`).join('')}</div><p class="muted">Referencia matemática construida con la sucesión de Fibonacci reducida módulo 10. Es una visualización exploratoria, no una regla oficial ni una señal predictiva.</p><p class="muted">La matriz describe el historial seleccionado; una ausencia no hace que un dígito sea más probable en el siguiente sorteo.</p></div>${trisCrossRadar()}`})():'';const melatePanel=['melate','revancha','revanchita'].includes(active.id)?(()=>{const draws=vals.map(v=>String(v).split(/[ ·,;\\s]+/).map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=56)).filter(a=>a.length===6);const odd=draws.reduce((s,a)=>s+a.filter(n=>n%2).length,0);const even=draws.reduce((s,a)=>s+a.filter(n=>n%2===0).length,0);const low=draws.reduce((s,a)=>s+a.filter(n=>n<=28).length,0);const high=draws.reduce((s,a)=>s+a.filter(n=>n>28).length,0);const sums=draws.map(a=>a.reduce((s,n)=>s+n,0));const avg=sums.length?(sums.reduce((a,b)=>a+b,0)/sums.length).toFixed(1):'—';const seen=new Set(draws.flat());const coverage=seen.size;const overlap=draws.length>1?draws.slice(1).reduce((sum,d,i)=>sum+d.filter(n=>draws[i].includes(n)).length,0)/(draws.length-1):0;return `<div class="position-panel"><h3>Perfil y cobertura · ${escapeHtml(active.name)}</h3><p class="muted">Análisis exclusivo del historial importado de este juego; no mezcla datos con Melate, Revancha ni Revanchita.</p><div class="freq-grid"><div class="freq-card"><b>Impares / pares</b><p>${odd} / ${even}</p></div><div class="freq-card"><b>1–28 / 29–56</b><p>${low} / ${high}</p></div><div class="freq-card"><b>Suma promedio de 6 números</b><p>${avg}</p></div><div class="freq-card"><b>Sorteos válidos analizados</b><p>${draws.length}</p></div><div class="freq-card"><b>Números distintos vistos</b><p>${coverage} / 56</p></div><div class="freq-card"><b>Repeticiones vs. sorteo anterior</b><p>${overlap.toFixed(2)} promedio</p></div></div><p class="muted">La cobertura cuenta cuántos números distintos aparecen en el historial. La repetición es un resumen descriptivo entre sorteos consecutivos, no una recomendación de apuesta.</p></div>`})():'';const zodiacPanel=active.id==='zodiaco'?(()=>{const rawValues=vals.map(v=>String(v||'').trim());const numbers=rawValues.map(v=>{const paired=zodiacResultParts(v);return paired?paired.number:(/^\d{4}$/.test(v)?v:null)}).filter(Boolean);const complete=rawValues.map(zodiacResultParts).filter(Boolean);const signs=rawValues.map(v=>{const paired=zodiacResultParts(v);if(paired)return paired.sign;return zodiac.find(sign=>norm(sign)===norm(v))||null}).filter(Boolean);const positions=Array.from({length:4},(_,p)=>{const counts=Array(10).fill(0);numbers.forEach(number=>counts[Number(number[p])]++);return `<div class="position-row"><b>R${p+1}</b>${counts.map((n,d)=>`<span title="Dígito ${d}: ${n} veces"><strong>${d}</strong><small>${n}</small></span>`).join('')}</div>`}).join('');const signCounts=zodiac.map(sign=>({sign,count:signs.filter(value=>value===sign).length})).sort((a,b)=>b.count-a.count);return `<div class="position-panel"><h3>Análisis ZODIACO · Número y signo</h3><p class="muted">Se analizan ${numbers.length} números de cuatro cifras; ${complete.length} tienen número y signo juntos. Los signos sin número se cuentan por separado.</p><h4>Frecuencia por posición</h4>${positions}<h4>Frecuencia por signo</h4><div class="freq-list">${signCounts.map(x=>`<span class="freq-chip"><b>${escapeHtml(x.sign)}</b><small>${x.count} veces</small></span>`).join('')}</div></div>`})():'';const backtestPanel=active.id==='tris'?backtestTris(vals):'';$('#statsContent').innerHTML=`<p><strong>${vals.length}</strong> resultados analizados en ${escapeHtml(label)}.</p>${positionPanel}${zodiacPanel}${backtestPanel}${melatePanel}<div class="freq-grid"><div class="freq-card"><h3>🔥 Números calientes</h3><p class="muted">Los cinco dígitos/números más frecuentes del historial importado</p><div class="freq-list">${hot.map(([n,c])=>`<span class="freq-chip hot"><b>${escapeHtml(n)}</b><small>${c} veces</small></span>`).join('')}</div></div><div class="freq-card"><h3>❄️ Números fríos</h3><p class="muted">Los cinco menos frecuentes; incluye valores con cero apariciones</p><div class="freq-list">${cold.map(([n,c])=>`<span class="freq-chip cold"><b>${escapeHtml(n)}</b><small>${c} veces</small></span>`).join('')}</div></div></div><p class="muted">${vals.length?'Las frecuencias se calculan solo con el historial importado.':'Aún no hay resultados importados para este juego/sorteo; se muestran frecuencias en cero.'} Son estadísticas descriptivas, no predicciones ni garantía de premios.</p>`}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{showTab(b.dataset.tab);if(b.dataset.tab==='stats')updateStatsPanel()}));$('#trisDraw').addEventListener('change',updateStatsPanel);$('#chispazoDraw').addEventListener('change',updateStatsPanel);$('#mode').addEventListener('change',updateStatsPanel);$('#closeModal').onclick=()=>$('#modal').hidden=true;$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')$('#modal').hidden=true});
 function randUnique(max,n){const s=new Set();while(s.size<n)s.add(1+Math.floor(Math.random()*max));return [...s].sort((a,b)=>a-b)}
 function weightedPick(weights){const total=weights.reduce((a,b)=>a+b,0);if(!total)return Math.floor(Math.random()*weights.length);let r=Math.random()*total;for(let i=0;i<weights.length;i++){r-=weights[i];if(r<0)return i}return weights.length-1}
@@ -428,8 +444,9 @@ function generateOne(){
  const mode=$('#mode').value,draw=selectedDraw();
  if(active.id==='tris'){const d=mode==='3 cifras'?3:mode==='4 cifras'?4:5;if(mode==='Pares')return String(Math.floor(Math.random()*100)).padStart(2,'0');const weights=trisPositionWeights(draw,d);return Array.from({length:d},(_,i)=>String(weightedPick(weights[i]))).join('')}
  if(active.id==='zodiaco'){const digits=zodiacDigitWeights().map(weights=>String(weightedPick(weights))).join('');const sign=zodiac[weightedPick(zodiacSignWeights())];return `${digits} | ${sign}`;}
- if(active.id==='chispazo'){const weights=numberWeights('chispazo',draw,28),chosen=new Set();while(chosen.size<5){const idx=weightedPick(weights);chosen.add(idx+1)}return [...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ')}
- const weights=numberWeights(active.id,'',56),chosen=new Set();while(chosen.size<6){const idx=weightedPick(weights);chosen.add(idx+1)}return [...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ')
+ if(active.id==='chispazo'){const weights=numberWeights('chispazo',draw,28),chosen=new Set();while(chosen.size<5){const idx=weightedPick(weights);chosen.add(idx+1)}return [...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ');
+ }
+ return '';
 }
 // Motor experimental de diez estrategias para TRIS: pondera frecuencia, recencia y ausencia por posición.
 function trisStrategyRows(draw){
@@ -452,15 +469,18 @@ function trisStrategyRows(draw){
  ];
  const seen=new Set(),rows=[];
  for(const [name,weightFn] of strategies){
-  let value='',rawScore=0;
+  let value='';
   for(let p=0;p<5;p++){
    const weights=Array.from({length:10},(_,d)=>weightFn(p,d));
-   const digit=String(weightedPick(weights));value+=digit;
-   rawScore+=Math.log(weights[Number(digit)]/weights.reduce((a,b)=>a+b,0));
+   value+=String(weightedPick(weights));
   }
-  if(seen.has(value)){for(let tries=0;tries<8&&seen.has(value);tries++){value=Array.from({length:5},(_,p)=>String(weightedPick(Array.from({length:10},(_,d)=>weightFn(p,d))))).join('')}}
+  if(seen.has(value)){
+   for(let tries=0;tries<8&&seen.has(value);tries++){
+    value=Array.from({length:5},(_,p)=>String(weightedPick(Array.from({length:10},(_,d)=>weightFn(p,d))))).join('');
+   }
+  }
   seen.add(value);
-  rows.push({name,value,score:Math.max(50,Math.min(99,Math.round(85+rawScore*2)))});
+  rows.push({name,value});
  }
  return rows;
 }
@@ -494,23 +514,29 @@ $('#generateBtn').onclick=()=>{
  let out=[],coveragePanel='';
  if(isCoverageGame){
   const rows=generateMelateCoverage(active.id,Math.min(n,30));
-  out=rows.map(row=>row.map(v=>String(v).padStart(2,'0')).join(' · '));
+ out=rows.map(row=>row.map(v=>String(v).padStart(2,'0')).join(' · '));
   const unique=new Set(rows.flat());
   coveragePanel=`<section class="position-panel" style="grid-column:1/-1"><h3>Cobertura inteligente · ${escapeHtml(active.name)}</h3><p class="muted">${rows.length} jugadas · ${unique.size} números distintos cubiertos de 56. El algoritmo favorece diversidad entre jugadas y equilibrio descriptivo.</p><p class="muted">La cobertura no aumenta la probabilidad matemática de una combinación individual ni garantiza premios.</p></section>`;
  }else{
   out=Array.from({length:n},generateOne);
  }
  const now=new Date().toISOString();
+ const previousTracked=tracked;
+ tracked=tracked.slice();
  out.forEach(value=>tracked.push({id:`${now}-${Math.random().toString(36).slice(2,8)}`,gameId:active.id,gameLabel,draw,mode,value,createdAt:now}));
  let classified='';
  if(active.id==='tris'&&mode==='5 cifras'){
   const rows=trisStrategyRows(draw);
   rows.forEach((r,i)=>tracked.push({id:`${now}-sniper-${i}-${Math.random().toString(36).slice(2,6)}`,gameId:'tris',gameLabel:'TRIS',draw,mode:'5 cifras',value:r.value,createdAt:now,strategy:r.name}));
-  classified=`<section class="position-panel" style="grid-column:1/-1"><h3>10 jugadas clasificadas · Motor experimental</h3><p class="muted">Estrategias calculadas con el histórico seleccionado. La puntuación es un índice interno, no una probabilidad de ganar.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>ID</th><th>Estrategia</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>Índice</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>#${String(i+1).padStart(2,'0')}</td><td>${escapeHtml(r.name)}</td>${r.value.split('').map(d=>`<td style="text-align:center;padding:6px">${d}</td>`).join('')}<td>${r.score}/100</td></tr>`).join('')}</tbody></table></div><p class="muted">También se guardaron en Centro de Aciertos para evaluación posterior.</p></section>`;
+  classified=`<section class="position-panel" style="grid-column:1/-1"><h3>10 jugadas clasificadas · Motor experimental</h3><p class="muted">Estrategias calculadas con el histórico seleccionado. Se muestran las combinaciones producidas por cada estrategia; no se asigna un porcentaje de éxito porque no está validado estadísticamente.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>ID</th><th>Estrategia</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>#${String(i+1).padStart(2,'0')}</td><td>${escapeHtml(r.name)}</td>${r.value.split('').map(d=>`<td style="text-align:center;padding:6px">${d}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="muted">También se guardaron en Centro de Aciertos para evaluación posterior.</p></section>`;
  }
- localStorage.setItem(comboKey,JSON.stringify(tracked));
+ if(!persist()){
+  tracked=previousTracked;
+  $('#generated').innerHTML='<p class="muted">No se pudieron guardar las combinaciones. No se confirmó el guardado; descarga un respaldo y libera espacio antes de intentarlo de nuevo.</p>';
+  return;
+ }
  $('#generated').innerHTML=coveragePanel+classified+out.map((v,i)=>`<div class="combo">${String(i+1).padStart(2,'0')} · ${escapeHtml(v)}</div>`).join('')+'<p class="muted" style="grid-column:1/-1">Combinaciones guardadas automáticamente en Centro de Aciertos para seguimiento. No son predicciones.</p>';
- renderCombos();
+
 };
 function matchCombo(combo,result){
  if(combo.gameId==='zodiaco'){
@@ -607,7 +633,7 @@ function updateTrackedHits(){
 $('#syncTrisBtn')?.addEventListener('click',syncOfficialTris);
 $('#importGame').addEventListener('change',()=>{$('#importDrawWrap').hidden=!['tris','chispazo'].includes($('#importGame').value);$('#importDrawLabel').textContent=$('#importGame').value==='chispazo'?'Sorteo Chispazo del archivo':'Sorteo TRIS del archivo';$('#importDraw').innerHTML=($('#importGame').value==='chispazo'?chispazoDraws:trisDraws).map(m=>`<option>${m}</option>`).join('')});
 $('#csvFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const rows=parseCSV(await f.text());importRows(rows,f.name,$('#importGame').value,$('#importDraw').value)}catch(err){$('#importStatus').textContent=`No se pudo procesar el CSV: ${err.message}`}e.target.value=''});
-$('#clearBtn').onclick=()=>{if(confirm('¿Borrar todos los registros históricos importados guardados en este dispositivo? Las combinaciones guardadas no se borrarán.')){records=[];localStorage.setItem(key,'[]');renderAll();$('#importStatus').textContent='Historial importado borrado.'}};
+$('#clearBtn').onclick=()=>{if(confirm('¿Borrar todos los registros históricos importados guardados en este dispositivo? Las combinaciones guardadas no se borrarán.')){const previousRecords=records;records=[];if(!persist()){records=previousRecords;$('#importStatus').textContent='No se pudo borrar el historial porque no fue posible guardar el cambio. Tus datos anteriores se conservaron.';return}$('#importStatus').textContent='Historial importado borrado.'}};
 const backupBox=document.createElement('section');backupBox.className='position-panel';backupBox.style.margin='18px auto';backupBox.style.maxWidth='1100px';backupBox.innerHTML='<h3>Respaldo y protección de datos</h3><p class="muted">Descarga una copia de tus historiales y combinaciones antes de actualizar NUMERIQ AI. Restaurar combina los datos del respaldo con los actuales; no borra lo que ya tienes.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" id="backupExportBtn">Descargar respaldo</button><button type="button" id="backupImportBtn">Restaurar respaldo</button><button type="button" id="storageProtectBtn">Proteger almacenamiento</button><button type="button" id="storageCheckBtn">Revisar espacio</button><input type="file" id="backupFile" accept=".json,application/json" hidden></div><p id="storageHealthStatus" class="muted" aria-live="polite">El almacenamiento del navegador puede tener límites; conserva una copia externa.</p>';
 document.body.appendChild(backupBox);
 $('#backupExportBtn').addEventListener('click',exportBackup);
