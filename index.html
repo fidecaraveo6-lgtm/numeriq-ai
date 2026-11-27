@@ -64,7 +64,7 @@
   <div id="statsPane" hidden><div id="statsContent" class="stats-content"></div></div>
  </section>
 </div>
-<script src="app.js?v=2.2.8"></script>
+<script src="app.js?v=2.2.9"></script>
 <script>
 (()=>{const clean=()=>{const root=document.getElementById('latestResults');if(!root)return;root.querySelectorAll('.latest-card').forEach(card=>{const heading=card.querySelector('h3')?.textContent||'';if(/CHISPAZO\\s*[·-]\\s*Historial anterior/i.test(heading))card.remove();});};const start=()=>{const root=document.getElementById('latestResults');if(!root)return;clean();new MutationObserver(clean).observe(root,{childList:true,subtree:true});};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();})();
 </script>
