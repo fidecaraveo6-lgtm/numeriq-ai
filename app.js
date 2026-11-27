@@ -280,8 +280,7 @@ function renderLatestResults(){
   if(g.id==='tris')trisDraws.forEach(draw=>targets.push({id:g.id,draw,label:`TRIS · ${draw}`}));
   else if(g.id==='chispazo'){
    chispazoDraws.forEach(draw=>targets.push({id:g.id,draw,label:`CHISPAZO · ${draw}`}));
-   // Mostrar el grupo heredado solo si realmente contiene resultados sin sorteo identificado.
-   if(allEntriesFor('chispazo','__legacy__').length)targets.push({id:g.id,draw:'__legacy__',label:'CHISPAZO · Historial anterior (sin sorteo identificado)'});
+   // No mostrar la tarjeta heredada: los dos sorteos oficiales se presentan por separado.
   }
   else targets.push({id:g.id,draw:'',label:g.name});
  });
