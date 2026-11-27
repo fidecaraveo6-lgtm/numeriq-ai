@@ -436,6 +436,8 @@ function generateOne(){
  if(active.id==='zodiaco'){const digits=zodiacDigitWeights().map(weights=>String(weightedPick(weights))).join('');const sign=zodiac[weightedPick(zodiacSignWeights())];return `${digits} | ${sign}`;}
  if(active.id==='chispazo'){const weights=numberWeights('chispazo',draw,28),chosen=new Set();while(chosen.size<5){const idx=weightedPick(weights);chosen.add(idx+1)}return
 [...chosen].sort((a,b)=>a-b).map(n=>String(n).padStart(2,'0')).join(' · ')
+ }
+ return '';
 }
 // Motor experimental de diez estrategias para TRIS: pondera frecuencia, recencia y ausencia por posición.
 function trisStrategyRows(draw){
