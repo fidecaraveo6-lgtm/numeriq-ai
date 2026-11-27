@@ -84,9 +84,10 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function norm(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
 
 function zodiacResultParts(value){
- const m=String(value||'').trim().match(/^(\d{4})\s*[|·-]\s*(Aries|Tauro|Géminis|Cáncer|Leo|Virgo|Libra|Escorpio|Sagitario|Capricornio|Acuario|Piscis)$/i);
+ const m=String(value||'').trim().match(/^(\d{4})\s*[|·-]\s*(Aries|Tauro|Géminis|Cáncer|Leo|Virgo|Libra|Escorpio|Escorpión|Sagitario|Capricornio|Acuario|Piscis)$/i);
  if(!m)return null;
- const sign=zodiac.find(z=>norm(z)===norm(m[2]));
+ const rawSign=norm(m[2])==='escorpion'?'Escorpio':m[2];
+ const sign=zodiac.find(z=>norm(z)===norm(rawSign));
  return sign?{number:m[1],sign}:null;
 }
 function zodiacDigitWeights(){
@@ -133,7 +134,7 @@ function parseCSV(text){text=String(text||'').replace(/^\uFEFF/,'');const sample
 function extractResult(cell,gameId,header=''){
  const s=String(cell??'').trim();if(!s)return [];
  if(gameId==='tris'){const m=s.match(/\b\d{3,5}\b/g);return m||[]}
- if(gameId==='zodiaco'){const m=s.match(/\b\d{4}\b/g);if(m)return m;const z=zodiac.find(v=>norm(s).includes(norm(v)));return z?[z]:[]}
+ if(gameId==='zodiaco'){const parsed=zodiacResultParts(s);if(parsed)return [`${parsed.number} | ${parsed.sign}`];const m=s.match(/\b\d{4}\b/g);if(m)return m;const z=zodiac.find(v=>norm(s).includes(norm(v)))||(norm(s).includes('escorpion')?'Escorpio':'');return z?[z]:[]}
  const nums=(s.match(/\d{1,2}/g)||[]).map(Number);
  const needed=gameId==='chispazo'?5:6,max=gameId==='chispazo'?28:56;
  if(nums.length!==needed||nums.some(n=>n<1||n>max)||new Set(nums).size!==needed)return [];
