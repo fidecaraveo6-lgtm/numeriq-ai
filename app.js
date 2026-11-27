@@ -100,8 +100,12 @@ function zodiacDigitWeights(){
 }
 function zodiacSignWeights(){
  const counts=Array(12).fill(1);
-allEntriesFor('zodiaco').map(e=>zodiacResultParts(e.value)).filter(Boolean).forEach(e=>{
-  const i=zodiac.indexOf(e.sign);if(i>=0)counts[i]++;
+ allEntriesFor('zodiaco').forEach(e=>{
+  const paired=zodiacResultParts(e.value);
+  const raw=paired?paired.sign:String(e.value||'').trim();
+  const sign=zodiac.find(z=>norm(z)===norm(raw));
+  const i=sign?zodiac.indexOf(sign):-1;
+  if(i>=0)counts[i]++;
  });
  return counts;
 }
