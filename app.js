@@ -18,7 +18,8 @@ let active=null,deferredPrompt=null;const $=s=>document.querySelector(s);
 function persist(){
  const previousRecords=localStorage.getItem(key),previousCombos=localStorage.getItem(comboKey);
  try{
- localStorage.setItem(key,JSON.stringify(records));
+  updateTrackedHits();
+  localStorage.setItem(key,JSON.stringify(records));
   localStorage.setItem(comboKey,JSON.stringify(tracked));
   renderAll();return true;
  }catch(err){
@@ -183,7 +184,6 @@ for(const row of data){const date=dateIndex>=0?String(row[dateIndex]||'').trim()
  const previousRecords=records;records=records.slice();
  for(const [k,items] of grouped){const [gameId,draw,mode]=k.split('|'),g=games.find(x=>x.id===gameId);const entries=items.map(x=>({value:x.value,date:x.date,importedAt:new Date().toISOString()}));records.push({gameId,draw,mode,values:entries.map(x=>x.value),entries,name:g?.name||gameId,gameLabel:gameId==='tris'?`TRIS · ${draw}`:gameId==='chispazo'?`CHISPAZO · ${draw}`:g?.name||gameId,count:entries.length,file:fileName,date:items.map(x=>x.date).filter(Boolean).sort((a,b)=>dateRank(a)-dateRank(b)).at(-1)||new Date().toLocaleDateString('es-MX')})}
  const oldRecords=previousRecords,oldTracked=tracked.map(c=>({...c}));
- updateTrackedHits();
  if(!persist()){
   records=oldRecords;
   tracked=oldTracked;
@@ -293,7 +293,6 @@ function renderHistory(){const total=records.reduce((a,r)=>a+(r.values?.length||
 function renderCombos(){
  const box=$('#trackedCombos');if(!box)return;
  if(!tracked.length){box.innerHTML='<p class="muted">Las combinaciones que generes aparecerán aquí para darles seguimiento.</p>';return}
- updateTrackedHits();
  const exact=tracked.filter(c=>c.hit?.exact).length;
  const partial=tracked.filter(c=>c.hit&&!c.hit.exact).length;
  const pending=tracked.length-exact-partial;
@@ -520,7 +519,6 @@ $('#generateBtn').onclick=()=>{
   rows.forEach((r,i)=>tracked.push({id:`${now}-sniper-${i}-${Math.random().toString(36).slice(2,6)}`,gameId:'tris',gameLabel:'TRIS',draw,mode:'5 cifras',value:r.value,createdAt:now,strategy:r.name}));
   classified=`<section class="position-panel" style="grid-column:1/-1"><h3>10 jugadas clasificadas · Motor experimental</h3><p class="muted">Estrategias calculadas con el histórico seleccionado. Se muestran las combinaciones producidas por cada estrategia; no se asigna un porcentaje de éxito porque no está validado estadísticamente.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>ID</th><th>Estrategia</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>#${String(i+1).padStart(2,'0')}</td><td>${escapeHtml(r.name)}</td>${r.value.split('').map(d=>`<td style="text-align:center;padding:6px">${d}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="muted">También se guardaron en Centro de Aciertos para evaluación posterior.</p></section>`;
  }
- updateTrackedHits();
  if(!persist()){
   tracked=previousTracked;
   $('#generated').innerHTML='<p class="muted">No se pudieron guardar las combinaciones. No se confirmó el guardado; descarga un respaldo y libera espacio antes de intentarlo de nuevo.</p>';
