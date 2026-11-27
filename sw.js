@@ -1,9 +1,9 @@
-const CACHE = 'numeriq-ai-v2-2-7';
+const CACHE = 'numeriq-ai-v2-2-8';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './app.js?v=2.2.7',
+  './app.js?v=2.2.8',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
